@@ -1,200 +1,251 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Simple TTS Web App</title>
-  <style>
-    :root{--bg:#0f1724;--card:#0b1220;--muted:#9aa4b2;--accent:#6ee7b7}
-    *{box-sizing:border-box}
-    body{font-family:Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center; background:linear-gradient(180deg,#071029 0%, #071726 100%); color:#e6eef6}
-    .wrap{width:960px; max-width:96%; padding:28px; background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); border-radius:14px; box-shadow:0 8px 30px rgba(2,6,23,0.6)}
-    h1{margin:0 0 10px 0; font-size:20px}
-    p.lead{margin:0 0 18px 0; color:var(--muted); font-size:14px}
-    .grid{display:grid; grid-template-columns:1fr 320px; gap:18px}
-    textarea{width:100%; min-height:240px; resize:vertical; background:#021024; border:1px solid rgba(255,255,255,0.04); color:inherit; padding:12px; border-radius:8px; font-size:15px}
-    .controls{display:flex; flex-direction:column; gap:12px}
-    label{font-size:13px; color:var(--muted)}
-    select,input[type=range]{width:100%; margin-top:6px}
-    .row{display:flex; gap:8px}
-    button{appearance:none; border:0; background:linear-gradient(90deg,var(--accent),#10b981); color:#022; font-weight:600; padding:10px 12px; border-radius:8px; cursor:pointer}
-    button.secondary{background:transparent; border:1px solid rgba(255,255,255,0.06); color:var(--muted); font-weight:600}
-    .meta{font-size:12px; color:var(--muted)}
-    footer{margin-top:14px; font-size:12px; color:var(--muted)}
-    .small{font-size:12px}
-    @media (max-width:880px){.grid{grid-template-columns:1fr}}
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Text to Speech App</title>
+    <style>
+        :root {
+            --primary: #4a90e2;
+            --bg: #f4f7f6;
+            --surface: #ffffff;
+            --text: #333333;
+        }
+
+        body {
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+
+        .container {
+            background: var(--surface);
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 500px;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 1.5rem;
+            color: var(--primary);
+        }
+
+        textarea {
+            width: 100%;
+            height: 150px;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            resize: vertical;
+            font-size: 16px;
+            box-sizing: border-box; /* Ensures padding doesn't affect width */
+            margin-bottom: 1rem;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .controls-group {
+            margin-bottom: 1.5rem;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        select {
+            width: 100%;
+            padding: 8px;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+            background: white;
+            margin-bottom: 1rem;
+        }
+
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 0.8rem;
+        }
+
+        .slider-container label {
+            width: 70px;
+            margin: 0;
+        }
+
+        input[type="range"] {
+            flex-grow: 1;
+            cursor: pointer;
+        }
+
+        .value-display {
+            width: 30px;
+            text-align: right;
+            font-size: 0.85rem;
+            color: #666;
+        }
+
+        .buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        button {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.2s;
+        }
+
+        #speak-btn { background: var(--primary); color: white; }
+        #speak-btn:hover { background: #357abd; }
+        
+        #stop-btn { background: #e74c3c; color: white; }
+        #stop-btn:hover { background: #c0392b; }
+
+    </style>
 </head>
 <body>
-  <div class="wrap">
-    <h1>Simple TTS Web App</h1>
-    <p class="lead">Type (or paste) text, choose a voice, adjust rate &amp; pitch, then press <strong>Speak</strong>. Works in modern browsers that implement the Web Speech API (Chrome, Edge, Safari, Firefox may vary).</p>
 
-    <div class="grid">
-      <div>
-        <label class="small" for="text">Text to speak</label>
-        <textarea id="text">Hello! This is a simple text-to-speech demo. Try changing the voice, rate, or pitch.</textarea>
+<div class="container">
+    <h1>Text to Speech</h1>
+    
+    <textarea id="text-input" placeholder="Type something here to hear it spoken..."></textarea>
 
-        <div style="display:flex; gap:8px; margin-top:10px">
-          <button id="speak">Speak ▶</button>
-          <button class="secondary" id="pause">Pause ⏸</button>
-          <button class="secondary" id="resume">Resume ►</button>
-          <button class="secondary" id="stop">Stop ■</button>
+    <div class="controls-group">
+        <label for="voice-select">Voice Selection</label>
+        <select id="voice-select"></select>
+
+        <div class="slider-container">
+            <label for="volume">Volume</label>
+            <input type="range" id="volume" min="0" max="1" step="0.1" value="1">
+            <span class="value-display" id="volume-val">1</span>
         </div>
 
-        <p class="meta">Tip: press <strong>Ctrl/⌘ + Enter</strong> to start speaking quickly.</p>
-      </div>
-
-      <aside class="controls">
-        <div>
-          <label for="voices">Voice</label>
-          <select id="voices" aria-label="Choose voice"></select>
+        <div class="slider-container">
+            <label for="rate">Speed</label>
+            <input type="range" id="rate" min="0.5" max="2" step="0.1" value="1">
+            <span class="value-display" id="rate-val">1</span>
         </div>
 
-        <div>
-          <label for="rate">Rate: <span id="rateValue">1</span></label>
-          <input id="rate" type="range" min="0.5" max="2" step="0.1" value="1">
+        <div class="slider-container">
+            <label for="pitch">Pitch</label>
+            <input type="range" id="pitch" min="0" max="2" step="0.1" value="1">
+            <span class="value-display" id="pitch-val">1</span>
         </div>
-
-        <div>
-          <label for="pitch">Pitch: <span id="pitchValue">1</span></label>
-          <input id="pitch" type="range" min="0" max="2" step="0.1" value="1">
-        </div>
-
-        <div>
-          <label for="volume">Volume: <span id="volumeValue">1</span></label>
-          <input id="volume" type="range" min="0" max="1" step="0.1" value="1">
-        </div>
-
-        <div>
-          <label>Actions</label>
-          <div class="row">
-            <button id="copy" class="secondary">Copy Text</button>
-            <button id="clear" class="secondary">Clear</button>
-          </div>
-        </div>
-
-        <div>
-          <label>Status</label>
-          <div class="small" id="status">Idle</div>
-        </div>
-      </aside>
     </div>
 
-    <footer>
-      Note: Browsers implement TTS differently. Downloading synthesized audio directly from SpeechSynthesis is not supported by the standard. For exporting audio you need a server-side TTS or cloud TTS provider (Google, Azure, Amazon) or record via an external virtual audio device.
-    </footer>
-  </div>
+    <div class="buttons">
+        <button id="speak-btn">Speak</button>
+        <button id="stop-btn">Stop</button>
+    </div>
+</div>
 
-  <script>
-    // Elements
-    const textEl = document.getElementById('text');
-    const voicesEl = document.getElementById('voices');
-    const rateEl = document.getElementById('rate');
-    const pitchEl = document.getElementById('pitch');
-    const volumeEl = document.getElementById('volume');
-    const speakBtn = document.getElementById('speak');
-    const pauseBtn = document.getElementById('pause');
-    const resumeBtn = document.getElementById('resume');
-    const stopBtn = document.getElementById('stop');
-    const copyBtn = document.getElementById('copy');
-    const clearBtn = document.getElementById('clear');
-    const statusEl = document.getElementById('status');
-    const rateValue = document.getElementById('rateValue');
-    const pitchValue = document.getElementById('pitchValue');
-    const volumeValue = document.getElementById('volumeValue');
+<script>
+    const synth = window.speechSynthesis;
 
-    let synth = window.speechSynthesis;
-    let currentUtterance = null;
+    // DOM Elements
+    const textInput = document.getElementById('text-input');
+    const voiceSelect = document.getElementById('voice-select');
+    const volumeInput = document.getElementById('volume');
+    const rateInput = document.getElementById('rate');
+    const pitchInput = document.getElementById('pitch');
+    const volumeVal = document.getElementById('volume-val');
+    const rateVal = document.getElementById('rate-val');
+    const pitchVal = document.getElementById('pitch-val');
+    const speakBtn = document.getElementById('speak-btn');
+    const stopBtn = document.getElementById('stop-btn');
 
-    function setStatus(s){ statusEl.textContent = s }
+    let voices = [];
 
-    // Populate voices
-    function populateVoices(){
-      const voices = synth.getVoices();
-      voicesEl.innerHTML = '';
-      voices.forEach((v, i) => {
-        const opt = document.createElement('option');
-        opt.value = i;
-        opt.textContent = `${v.name} — ${v.lang}${v.default ? ' (default)' : ''}${v.localService ? '' : ' (remote)'}`;
-        voicesEl.appendChild(opt);
-      });
+    // 1. Fetch and Populate Voices
+    function populateVoices() {
+        voices = synth.getVoices();
+        
+        // Clear existing options
+        voiceSelect.innerHTML = '';
+
+        voices.forEach((voice) => {
+            const option = document.createElement('option');
+            option.textContent = `${voice.name} (${voice.lang})`;
+            option.setAttribute('data-lang', voice.lang);
+            option.setAttribute('data-name', voice.name);
+            voiceSelect.appendChild(option);
+        });
     }
 
+    // Browsers load voices asynchronously, so we wait for the event
     populateVoices();
     if (speechSynthesis.onvoiceschanged !== undefined) {
-      speechSynthesis.onvoiceschanged = populateVoices;
+        speechSynthesis.onvoiceschanged = populateVoices;
     }
 
-    function speak(){
-      if (!synth) return alert('SpeechSynthesis not supported in this browser');
-      if (synth.speaking) {
-        setStatus('Already speaking');
-        return;
-      }
-      const txt = textEl.value.trim();
-      if (!txt) return setStatus('No text to speak');
+    // 2. Speak Function
+    function speak() {
+        if (synth.speaking) {
+            console.error('speechSynthesis.speaking');
+            return;
+        }
 
-      currentUtterance = new SpeechSynthesisUtterance(txt);
-      const voices = synth.getVoices();
-      const chosen = voices[voicesEl.value] || voices[0];
-      if (chosen) currentUtterance.voice = chosen;
-      currentUtterance.rate = parseFloat(rateEl.value);
-      currentUtterance.pitch = parseFloat(pitchEl.value);
-      currentUtterance.volume = parseFloat(volumeEl.value);
+        if (textInput.value !== '') {
+            const speakText = new SpeechSynthesisUtterance(textInput.value);
 
-      currentUtterance.onstart = () => setStatus('Speaking');
-      currentUtterance.onend = () => { setStatus('Finished'); currentUtterance = null };
-      currentUtterance.onerror = (e) => { console.error(e); setStatus('Error'); };
+            // Find the selected voice object
+            const selectedOption = voiceSelect.selectedOptions[0].getAttribute('data-name');
+            const selectedVoice = voices.find(voice => voice.name === selectedOption);
+            
+            speakText.voice = selectedVoice;
+            speakText.volume = volumeInput.value;
+            speakText.rate = rateInput.value;
+            speakText.pitch = pitchInput.value;
 
-      // Optional: show boundary events (word/char)
-      currentUtterance.onboundary = (ev) => {
-        // could highlight word/char here
-      };
+            // Visual feedback handling
+            speakText.onend = e => {
+                console.log('Done speaking...');
+            };
 
-      synth.speak(currentUtterance);
+            speakText.onerror = e => {
+                console.error('Something went wrong');
+            };
+
+            synth.speak(speakText);
+        }
     }
 
-    function pause(){
-      if (synth && synth.speaking && !synth.paused){
-        synth.pause(); setStatus('Paused');
-      }
-    }
-    function resume(){
-      if (synth && synth.paused){ synth.resume(); setStatus('Resumed'); }
-    }
-    function stop(){
-      if (synth){ synth.cancel(); setStatus('Stopped'); currentUtterance = null }
-    }
-
-    // Controls
-    speakBtn.addEventListener('click', speak);
-    pauseBtn.addEventListener('click', pause);
-    resumeBtn.addEventListener('click', resume);
-    stopBtn.addEventListener('click', stop);
-    copyBtn.addEventListener('click', ()=>{ navigator.clipboard?.writeText(textEl.value).then(()=>setStatus('Copied text'),()=>setStatus('Copy failed')) });
-    clearBtn.addEventListener('click', ()=>{ textEl.value=''; setStatus('Cleared') });
-
-    rateEl.addEventListener('input', ()=>{ rateValue.textContent = rateEl.value });
-    pitchEl.addEventListener('input', ()=>{ pitchValue.textContent = pitchEl.value });
-    volumeEl.addEventListener('input', ()=>{ volumeValue.textContent = volumeEl.value });
-
-    // Keyboard shortcut Ctrl/Cmd + Enter
-    textEl.addEventListener('keydown', (e)=>{
-      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter'){
-        e.preventDefault(); speak();
-      }
+    // 3. Event Listeners
+    speakBtn.addEventListener('click', e => {
+        e.preventDefault();
+        speak();
     });
 
-    // On page unload, cancel any speech
-    window.addEventListener('beforeunload', ()=>{ if (synth) synth.cancel() });
+    stopBtn.addEventListener('click', e => {
+        e.preventDefault();
+        synth.cancel(); // Stops playback instantly
+    });
 
-    // Feature detection message
-    if (!('speechSynthesis' in window)){
-      setStatus('SpeechSynthesis API not supported in this browser');
-    } else {
-      setStatus('Ready');
-    }
-  </script>
+    // Update value displays next to sliders
+    rateInput.addEventListener('change', e => rateVal.textContent = rateInput.value);
+    pitchInput.addEventListener('change', e => pitchVal.textContent = pitchInput.value);
+    volumeInput.addEventListener('change', e => volumeVal.textContent = volumeInput.value);
+
+</script>
+
 </body>
 </html>
