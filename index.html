@@ -161,7 +161,6 @@
 <script>
     const synth = window.speechSynthesis;
 
-    // DOM Elements
     const textInput = document.getElementById('text-input');
     const voiceSelect = document.getElementById('voice-select');
     const volumeInput = document.getElementById('volume');
@@ -175,12 +174,18 @@
 
     let voices = [];
 
-    // 1. Fetch and Populate Voices
     function populateVoices() {
         voices = synth.getVoices();
-        
-        // Clear existing options
         voiceSelect.innerHTML = '';
+        
+        // Sort voices alphabetically for easier finding
+        voices.sort((a, b) => {
+            const aname = a.name.toUpperCase();
+            const bname = b.name.toUpperCase();
+            if (aname < bname) return -1;
+            if (aname > bname) return 1;
+            return 0;
+        });
 
         voices.forEach((voice) => {
             const option = document.createElement('option');
@@ -191,13 +196,11 @@
         });
     }
 
-    // Browsers load voices asynchronously, so we wait for the event
     populateVoices();
     if (speechSynthesis.onvoiceschanged !== undefined) {
         speechSynthesis.onvoiceschanged = populateVoices;
     }
 
-    // 2. Speak Function
     function speak() {
         if (synth.speaking) {
             console.error('speechSynthesis.speaking');
@@ -206,17 +209,19 @@
 
         if (textInput.value !== '') {
             const speakText = new SpeechSynthesisUtterance(textInput.value);
-
-            // Find the selected voice object
+            
+            // Get selected voice
             const selectedOption = voiceSelect.selectedOptions[0].getAttribute('data-name');
             const selectedVoice = voices.find(voice => voice.name === selectedOption);
             
+            // APPLY THE VOICE AND THE LANGUAGE
             speakText.voice = selectedVoice;
+            speakText.lang = selectedVoice.lang; // <--- CRITICAL FIX
+
             speakText.volume = volumeInput.value;
             speakText.rate = rateInput.value;
             speakText.pitch = pitchInput.value;
 
-            // Visual feedback handling
             speakText.onend = e => {
                 console.log('Done speaking...');
             };
@@ -229,7 +234,6 @@
         }
     }
 
-    // 3. Event Listeners
     speakBtn.addEventListener('click', e => {
         e.preventDefault();
         speak();
@@ -237,15 +241,14 @@
 
     stopBtn.addEventListener('click', e => {
         e.preventDefault();
-        synth.cancel(); // Stops playback instantly
+        synth.cancel();
     });
 
-    // Update value displays next to sliders
     rateInput.addEventListener('change', e => rateVal.textContent = rateInput.value);
     pitchInput.addEventListener('change', e => pitchVal.textContent = pitchInput.value);
     volumeInput.addEventListener('change', e => volumeVal.textContent = volumeInput.value);
-
 </script>
+    
 
 </body>
 </html>
