@@ -1,7 +1,7 @@
 # TTSapp
 
 
-This is a Powershell app that runs on Windows without installation
+This is a html app that runs on any Chrome/Safari/Firefox browsers
 
 ****************************************************
 ```text
