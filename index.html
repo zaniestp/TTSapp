@@ -40,13 +40,13 @@
 
         textarea {
             width: 100%;
-            height: 150px;
+            height: 120px;
             padding: 10px;
             border: 2px solid #ddd;
             border-radius: 8px;
             resize: vertical;
             font-size: 16px;
-            box-sizing: border-box; /* Ensures padding doesn't affect width */
+            box-sizing: border-box;
             margin-bottom: 1rem;
         }
 
@@ -57,6 +57,9 @@
 
         .controls-group {
             margin-bottom: 1.5rem;
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
         }
 
         label {
@@ -73,6 +76,16 @@
             border: 1px solid #ccc;
             background: white;
             margin-bottom: 1rem;
+        }
+
+        .filter-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        
+        .filter-item {
+            flex: 1;
         }
 
         .slider-container {
@@ -120,6 +133,13 @@
         #stop-btn { background: #e74c3c; color: white; }
         #stop-btn:hover { background: #c0392b; }
 
+        .note {
+            font-size: 0.8rem;
+            color: #777;
+            margin-top: 10px;
+            text-align: center;
+            font-style: italic;
+        }
     </style>
 </head>
 <body>
@@ -130,7 +150,18 @@
     <textarea id="text-input" placeholder="Type something here to hear it spoken..."></textarea>
 
     <div class="controls-group">
-        <label for="voice-select">Voice Selection</label>
+        <div class="filter-row">
+            <div class="filter-item">
+                <label for="gender-filter">Gender Filter</label>
+                <select id="gender-filter">
+                    <option value="all">Show All</option>
+                    <option value="female">Female (Guessed)</option>
+                    <option value="male">Male (Guessed)</option>
+                </select>
+            </div>
+        </div>
+
+        <label for="voice-select">Select Voice</label>
         <select id="voice-select"></select>
 
         <div class="slider-container">
@@ -156,6 +187,10 @@
         <button id="speak-btn">Speak</button>
         <button id="stop-btn">Stop</button>
     </div>
+    
+    <div class="note">
+        Note: "Gender" relies on voice names provided by your OS. Some voices may not specify gender.
+    </div>
 </div>
 
 <script>
@@ -163,6 +198,7 @@
 
     const textInput = document.getElementById('text-input');
     const voiceSelect = document.getElementById('voice-select');
+    const genderFilter = document.getElementById('gender-filter');
     const volumeInput = document.getElementById('volume');
     const rateInput = document.getElementById('rate');
     const pitchInput = document.getElementById('pitch');
@@ -174,32 +210,58 @@
 
     let voices = [];
 
+    // Keywords to detect gender from voice names
+    // Note: This isn't perfect, as not all voices label themselves!
+    const maleKeywords = ['male', 'man', 'david', 'mark', 'george', 'daniel', 'james', 'alex', 'fred', 'kangkang'];
+    const femaleKeywords = ['female', 'woman', 'girl', 'zira', 'susan', 'hazel', 'heather', 'samantha', 'victoria', 'huihui', 'yaoyao', 'ting-ting'];
+
     function populateVoices() {
         voices = synth.getVoices();
+        const selectedGender = genderFilter.value;
+        
         voiceSelect.innerHTML = '';
         
-        // Sort voices alphabetically for easier finding
-        voices.sort((a, b) => {
-            const aname = a.name.toUpperCase();
-            const bname = b.name.toUpperCase();
-            if (aname < bname) return -1;
-            if (aname > bname) return 1;
-            return 0;
-        });
+        // Sort voices alphabetically
+        voices.sort((a, b) => a.name.localeCompare(b.name));
+
+        let hasResults = false;
 
         voices.forEach((voice) => {
-            const option = document.createElement('option');
-            option.textContent = `${voice.name} (${voice.lang})`;
-            option.setAttribute('data-lang', voice.lang);
-            option.setAttribute('data-name', voice.name);
-            voiceSelect.appendChild(option);
+            const nameLower = voice.name.toLowerCase();
+            let isMatch = true;
+
+            // --- Gender Filtering Logic ---
+            if (selectedGender === 'male') {
+                isMatch = maleKeywords.some(keyword => nameLower.includes(keyword));
+            } else if (selectedGender === 'female') {
+                isMatch = femaleKeywords.some(keyword => nameLower.includes(keyword));
+            }
+            // ------------------------------
+
+            if (isMatch) {
+                const option = document.createElement('option');
+                option.textContent = `${voice.name} (${voice.lang})`;
+                option.setAttribute('data-lang', voice.lang);
+                option.setAttribute('data-name', voice.name);
+                voiceSelect.appendChild(option);
+                hasResults = true;
+            }
         });
+
+        if (!hasResults) {
+            const option = document.createElement('option');
+            option.textContent = "-- No voices found for this filter --";
+            voiceSelect.appendChild(option);
+        }
     }
 
     populateVoices();
     if (speechSynthesis.onvoiceschanged !== undefined) {
         speechSynthesis.onvoiceschanged = populateVoices;
     }
+
+    // Re-populate list when gender filter changes
+    genderFilter.addEventListener('change', populateVoices);
 
     function speak() {
         if (synth.speaking) {
@@ -210,25 +272,27 @@
         if (textInput.value !== '') {
             const speakText = new SpeechSynthesisUtterance(textInput.value);
             
-            // Get selected voice
-            const selectedOption = voiceSelect.selectedOptions[0].getAttribute('data-name');
-            const selectedVoice = voices.find(voice => voice.name === selectedOption);
+            const selectedOption = voiceSelect.selectedOptions[0];
             
-            // APPLY THE VOICE AND THE LANGUAGE
+            // Safety check if list is empty
+            if(!selectedOption || selectedOption.value.includes("-- No voices")) {
+                alert("Please select a valid voice first.");
+                return;
+            }
+
+            const voiceName = selectedOption.getAttribute('data-name');
+            const selectedVoice = voices.find(voice => voice.name === voiceName);
+            
+            // Set voice and language
             speakText.voice = selectedVoice;
-            speakText.lang = selectedVoice.lang; // <--- CRITICAL FIX
+            speakText.lang = selectedVoice.lang; 
 
             speakText.volume = volumeInput.value;
             speakText.rate = rateInput.value;
             speakText.pitch = pitchInput.value;
 
-            speakText.onend = e => {
-                console.log('Done speaking...');
-            };
-
-            speakText.onerror = e => {
-                console.error('Something went wrong');
-            };
+            speakText.onend = e => { console.log('Done speaking...'); };
+            speakText.onerror = e => { console.error('Something went wrong'); };
 
             synth.speak(speakText);
         }
@@ -248,7 +312,6 @@
     pitchInput.addEventListener('change', e => pitchVal.textContent = pitchInput.value);
     volumeInput.addEventListener('change', e => volumeVal.textContent = volumeInput.value);
 </script>
-    
 
 </body>
 </html>
