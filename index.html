@@ -695,23 +695,31 @@
             let sentenceRegex;
             
             if (detectedLanguage === 'zh' || detectedLanguage === 'ja') {
-                sentenceRegex = /[^.!?。！？]+[.!?。！？]+/g;
+                // Chinese and Japanese - look for Chinese punctuation and Western punctuation
+                sentenceRegex = /[^.!?。！？\n]+[.!?。！？]+|[^.!?。！？\n]+$/g;
             } else if (detectedLanguage === 'ar' || detectedLanguage === 'he') {
-                sentenceRegex = /[^.!?]+[.!?]+/g;
+                sentenceRegex = /[^.!?\n]+[.!?]+|[^.!?\n]+$/g;
             } else if (detectedLanguage === 'th') {
-                sentenceRegex = /[^.!?]+[.!?]+/g;
+                sentenceRegex = /[^.!?\n]+[.!?]+|[^.!?\n]+$/g;
             } else {
-                sentenceRegex = /[^.!?]+[.!?]+/g;
+                sentenceRegex = /[^.!?\n]+[.!?]+|[^.!?\n]+$/g;
             }
             
             sentences = pdfText.match(sentenceRegex);
             
             if (!sentences || sentences.length === 0) {
-                sentences = pdfText.split(/\n+/).filter(s => s.trim());
+                // Fallback: split by newlines or paragraphs
+                sentences = pdfText.split(/[\n\r]+/).filter(s => s.trim());
                 if (sentences.length === 0) {
                     sentences = [pdfText];
                 }
             }
+            
+            // Clean up sentences - trim whitespace
+            sentences = sentences.map(s => s.trim()).filter(s => s.length > 0);
+            
+            console.log('Total sentences detected:', sentences.length);
+            console.log('First 3 sentences:', sentences.slice(0, 3));
             
             textDisplay.innerHTML = '';
             sentences.forEach((sentence, index) => {
@@ -736,7 +744,7 @@
                 'he': 'Hebrew', 'ru': 'Russian', 'hi': 'Hindi', 'th': 'Thai'
             };
             const detectedLangName = langNames[detectedLanguage] || detectedLanguage.toUpperCase();
-            status.textContent = `Detected language: ${detectedLangName}. Premium voices (🌟) recommended for best quality.`;
+            status.textContent = `Detected language: ${detectedLangName}. Found ${sentences.length} sentences. Premium voices (🌟) recommended for best quality.`;
         }
 
         function startFromSentence(index) {
