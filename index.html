@@ -558,7 +558,10 @@
             
             voices.sort((a, b) => a.name.localeCompare(b.name));
             
-            populateVoiceSelect();
+            // Only populate if not playing
+            if (!isPlaying) {
+                populateVoiceSelect();
+            }
         }
 
         // Populate voice select with grouping and recommendations
@@ -678,7 +681,12 @@
         }
         
         if (window.speechSynthesis) {
-            window.speechSynthesis.onvoiceschanged = loadVoices;
+            window.speechSynthesis.onvoiceschanged = () => {
+                // Only reload voices if not currently playing
+                if (!isPlaying) {
+                    loadVoices();
+                }
+            };
         }
 
         speedControl.addEventListener('input', (e) => {
@@ -884,7 +892,10 @@
                 textDisplay.appendChild(span);
             });
             
-            populateVoiceSelect(detectedLanguage);
+            // Only update voice selection if not playing
+            if (!isPlaying) {
+                populateVoiceSelect(detectedLanguage);
+            }
             
             textDisplay.classList.remove('hidden');
             controls.classList.remove('hidden');
@@ -921,6 +932,12 @@
                 status.textContent = 'No text to read';
                 return;
             }
+            
+            // Capture the selected voice BEFORE starting playback
+            const selectedVoiceIndex = parseInt(voiceSelect.value);
+            const selectedVoice = voices[selectedVoiceIndex];
+            
+            console.log('Starting playback with voice:', selectedVoice ? selectedVoice.name : 'none', 'at index:', selectedVoiceIndex);
             
             // Reset to beginning only if not already playing
             if (!isPlaying) {
