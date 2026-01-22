@@ -3,315 +3,841 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Text to Speech App</title>
+    <title>Text-to-Speech Reader</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <style>
-        :root {
-            --primary: #4a90e2;
-            --bg: #f4f7f6;
-            --surface: #ffffff;
-            --text: #333333;
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
 
         body {
-            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-            background-color: var(--bg);
-            color: var(--text);
-            display: flex;
-            justify-content: center;
-            align-items: center;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
-            margin: 0;
+            padding: 20px;
         }
 
         .container {
-            background: var(--surface);
-            padding: 2rem;
-            border-radius: 12px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
-            width: 100%;
-            max-width: 500px;
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
         }
 
-        h1 {
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
             text-align: center;
-            margin-bottom: 1.5rem;
-            color: var(--primary);
         }
 
-        textarea {
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        .upload-area {
+            border: 3px dashed #667eea;
+            border-radius: 12px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: #f8f9ff;
+            margin-bottom: 20px;
+        }
+
+        .upload-area:hover {
+            background: #eef1ff;
+            border-color: #764ba2;
+        }
+
+        .upload-area.drag-over {
+            background: #e0e7ff;
+            border-color: #764ba2;
+        }
+
+        .upload-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .paste-area {
+            margin-top: 20px;
+        }
+
+        .paste-area textarea {
             width: 100%;
-            height: 120px;
-            padding: 10px;
+            min-height: 150px;
+            padding: 15px;
             border: 2px solid #ddd;
             border-radius: 8px;
+            font-size: 15px;
+            font-family: inherit;
             resize: vertical;
-            font-size: 16px;
-            box-sizing: border-box;
-            margin-bottom: 1rem;
+            transition: border-color 0.3s;
         }
 
-        textarea:focus {
+        .paste-area textarea:focus {
             outline: none;
-            border-color: var(--primary);
+            border-color: #667eea;
         }
 
-        .controls-group {
-            margin-bottom: 1.5rem;
-            background: #f8f9fa;
-            padding: 15px;
+        .paste-area button {
+            margin-top: 10px;
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
             border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
         }
 
-        label {
+        .paste-area button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .divider {
+            display: flex;
+            align-items: center;
+            text-align: center;
+            margin: 20px 0;
+            color: #666;
+        }
+
+        .divider::before,
+        .divider::after {
+            content: '';
+            flex: 1;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .divider span {
+            padding: 0 15px;
+            font-weight: 500;
+        }
+
+        .controls {
+            margin-top: 25px;
+            padding: 20px;
+            background: #f8f9ff;
+            border-radius: 12px;
+        }
+
+        .control-group {
+            margin-bottom: 20px;
+        }
+
+        .control-group label {
             display: block;
-            margin-bottom: 0.5rem;
+            margin-bottom: 8px;
             font-weight: 600;
-            font-size: 0.9rem;
+            color: #333;
+        }
+
+        .voice-filter {
+            margin-bottom: 15px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .voice-filter label {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-weight: normal;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        .voice-filter input[type="checkbox"] {
+            cursor: pointer;
         }
 
         select {
             width: 100%;
-            padding: 8px;
-            border-radius: 6px;
-            border: 1px solid #ccc;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 15px;
             background: white;
-            margin-bottom: 1rem;
-        }
-
-        .filter-row {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 10px;
-        }
-        
-        .filter-item {
-            flex: 1;
-        }
-
-        .slider-container {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin-bottom: 0.8rem;
-        }
-
-        .slider-container label {
-            width: 70px;
-            margin: 0;
-        }
-
-        input[type="range"] {
-            flex-grow: 1;
             cursor: pointer;
+            transition: border-color 0.3s;
         }
 
-        .value-display {
-            width: 30px;
-            text-align: right;
-            font-size: 0.85rem;
-            color: #666;
+        select:focus {
+            outline: none;
+            border-color: #667eea;
         }
 
         .buttons {
             display: flex;
-            gap: 10px;
+            gap: 15px;
+            margin-top: 20px;
         }
 
         button {
             flex: 1;
-            padding: 12px;
+            padding: 14px 24px;
             border: none;
-            border-radius: 6px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
             cursor: pointer;
-            font-weight: bold;
-            transition: background 0.2s;
+            transition: all 0.3s;
         }
 
-        #speak-btn { background: var(--primary); color: white; }
-        #speak-btn:hover { background: #357abd; }
-        
-        #stop-btn { background: #e74c3c; color: white; }
-        #stop-btn:hover { background: #c0392b; }
+        .btn-play {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
 
-        .note {
-            font-size: 0.8rem;
-            color: #777;
-            margin-top: 10px;
+        .btn-play:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-stop {
+            background: #ef4444;
+            color: white;
+        }
+
+        .btn-stop:hover:not(:disabled) {
+            background: #dc2626;
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .text-display {
+            margin-top: 25px;
+            padding: 20px;
+            background: #f8f9ff;
+            border-radius: 12px;
+            max-height: 400px;
+            overflow-y: auto;
+            line-height: 1.8;
+            color: #333;
+            cursor: pointer;
+        }
+
+        .text-display .sentence {
+            display: inline;
+        }
+
+        .text-display .sentence.highlight {
+            background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+            padding: 2px 4px;
+            border-radius: 3px;
+            transition: background 0.3s;
+        }
+
+        .text-display .sentence:hover {
+            background: #e0e7ff;
+            padding: 2px 4px;
+            border-radius: 3px;
+        }
+
+        .status {
+            margin-top: 15px;
+            padding: 12px;
+            background: #e0e7ff;
+            border-radius: 8px;
             text-align: center;
+            font-weight: 500;
+            color: #667eea;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .speed-control {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .speed-control input[type="range"] {
+            flex: 1;
+        }
+
+        .speed-value {
+            min-width: 50px;
+            font-weight: 600;
+            color: #667eea;
+        }
+
+        .info-text {
+            margin-top: 10px;
+            font-size: 14px;
+            color: #666;
             font-style: italic;
         }
     </style>
 </head>
 <body>
+    <div class="container">
+        <div class="header">
+            <h1>📄 Text-to-Speech Reader</h1>
+            <p>Upload a PDF or text file, or paste text to listen with premium voices</p>
+        </div>
 
-<div class="container">
-    <h1>Text to Speech</h1>
-    
-    <textarea id="text-input" placeholder="Type something here to hear it spoken..."></textarea>
-
-    <div class="controls-group">
-        <div class="filter-row">
-            <div class="filter-item">
-                <label for="gender-filter">Gender Filter</label>
-                <select id="gender-filter">
-                    <option value="all">Show All</option>
-                    <option value="female">Female (Guessed)</option>
-                    <option value="male">Male (Guessed)</option>
-                </select>
+        <div class="content">
+            <div class="upload-area" id="uploadArea">
+                <div class="upload-icon">📁</div>
+                <h3>Click to upload or drag and drop</h3>
+                <p>PDF or TXT files</p>
+                <input type="file" id="fileInput" accept=".pdf,.txt">
             </div>
-        </div>
 
-        <label for="voice-select">Select Voice</label>
-        <select id="voice-select"></select>
+            <div class="divider"><span>OR</span></div>
 
-        <div class="slider-container">
-            <label for="volume">Volume</label>
-            <input type="range" id="volume" min="0" max="1" step="0.1" value="1">
-            <span class="value-display" id="volume-val">1</span>
-        </div>
+            <div class="paste-area">
+                <textarea id="pasteTextarea" placeholder="Paste your text here..."></textarea>
+                <button id="pasteBtn">📋 Load Pasted Text</button>
+            </div>
 
-        <div class="slider-container">
-            <label for="rate">Speed</label>
-            <input type="range" id="rate" min="0.5" max="2" step="0.1" value="1">
-            <span class="value-display" id="rate-val">1</span>
-        </div>
+            <div class="controls hidden" id="controls">
+                <div class="control-group">
+                    <label for="voiceSelect">Select Voice:</label>
+                    <div class="voice-filter">
+                        <label>
+                            <input type="checkbox" id="showPremiumOnly">
+                            Show Premium/Neural Voices Only
+                        </label>
+                        <label>
+                            <input type="checkbox" id="autoSelectPremium" checked>
+                            Auto-select Premium Voice
+                        </label>
+                    </div>
+                    <select id="voiceSelect"></select>
+                </div>
 
-        <div class="slider-container">
-            <label for="pitch">Pitch</label>
-            <input type="range" id="pitch" min="0" max="2" step="0.1" value="1">
-            <span class="value-display" id="pitch-val">1</span>
+                <div class="control-group">
+                    <label for="speedControl">Speech Speed:</label>
+                    <div class="speed-control">
+                        <input type="range" id="speedControl" min="0.5" max="2" step="0.1" value="1">
+                        <span class="speed-value" id="speedValue">1.0x</span>
+                    </div>
+                </div>
+
+                <div class="buttons">
+                    <button class="btn-play" id="playBtn">▶ Play</button>
+                    <button class="btn-stop" id="stopBtn" disabled>⏹ Stop</button>
+                </div>
+
+                <div class="status" id="status">Ready to play</div>
+                <div class="info-text">💡 Tip: Click on any sentence in the text below to start reading from that point. Premium voices (🌟) offer better intonation in Edge browser.</div>
+            </div>
+
+            <div class="text-display hidden" id="textDisplay"></div>
         </div>
     </div>
 
-    <div class="buttons">
-        <button id="speak-btn">Speak</button>
-        <button id="stop-btn">Stop</button>
-    </div>
-    
-    <div class="note">
-        Note: "Gender" relies on voice names provided by your OS. Some voices may not specify gender.
-    </div>
-</div>
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
-<script>
-    const synth = window.speechSynthesis;
+        let pdfText = '';
+        let sentences = [];
+        let synth = null;
+        let utterances = [];
+        let currentSentenceIndex = 0;
+        let isPlaying = false;
+        let voices = [];
+        let detectedLanguage = '';
 
-    const textInput = document.getElementById('text-input');
-    const voiceSelect = document.getElementById('voice-select');
-    const genderFilter = document.getElementById('gender-filter');
-    const volumeInput = document.getElementById('volume');
-    const rateInput = document.getElementById('rate');
-    const pitchInput = document.getElementById('pitch');
-    const volumeVal = document.getElementById('volume-val');
-    const rateVal = document.getElementById('rate-val');
-    const pitchVal = document.getElementById('pitch-val');
-    const speakBtn = document.getElementById('speak-btn');
-    const stopBtn = document.getElementById('stop-btn');
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const pasteTextarea = document.getElementById('pasteTextarea');
+        const pasteBtn = document.getElementById('pasteBtn');
+        const controls = document.getElementById('controls');
+        const textDisplay = document.getElementById('textDisplay');
+        const voiceSelect = document.getElementById('voiceSelect');
+        const showPremiumOnly = document.getElementById('showPremiumOnly');
+        const autoSelectPremium = document.getElementById('autoSelectPremium');
+        const speedControl = document.getElementById('speedControl');
+        const speedValue = document.getElementById('speedValue');
+        const playBtn = document.getElementById('playBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const status = document.getElementById('status');
 
-    let voices = [];
+        // Detect language from text
+        function detectLanguage(text) {
+            const sample = text.substring(0, 200);
+            
+            if (/[\u4e00-\u9fff]/.test(sample)) return 'zh';
+            if (/[\u3040-\u309f\u30a0-\u30ff]/.test(sample)) return 'ja';
+            if (/[\uac00-\ud7af]/.test(sample)) return 'ko';
+            if (/[\u0600-\u06ff]/.test(sample)) return 'ar';
+            if (/[\u0590-\u05ff]/.test(sample)) return 'he';
+            if (/[\u0400-\u04ff]/.test(sample)) return 'ru';
+            if (/[\u0e00-\u0e7f]/.test(sample)) return 'th';
+            if (/[\u0900-\u097f]/.test(sample)) return 'hi';
+            
+            return 'en';
+        }
 
-    // Keywords to detect gender from voice names
-    // Note: This isn't perfect, as not all voices label themselves!
-    const maleKeywords = ['male', 'man', 'david', 'mark', 'george', 'daniel', 'james', 'alex', 'fred', 'kangkang'];
-    const femaleKeywords = ['female', 'woman', 'girl', 'zira', 'susan', 'hazel', 'heather', 'samantha', 'victoria', 'huihui', 'yaoyao', 'ting-ting'];
+        // Check if voice is premium/neural
+        function isPremiumVoice(voice) {
+            const name = voice.name.toLowerCase();
+            const uri = voice.voiceURI.toLowerCase();
+            
+            // Microsoft Edge neural voices typically contain these keywords
+            return name.includes('natural') || 
+                   name.includes('neural') || 
+                   name.includes('online') ||
+                   uri.includes('natural') ||
+                   uri.includes('neural') ||
+                   uri.includes('online');
+        }
 
-    function populateVoices() {
-        voices = synth.getVoices();
-        const selectedGender = genderFilter.value;
-        
-        voiceSelect.innerHTML = '';
-        
-        // Sort voices alphabetically
-        voices.sort((a, b) => a.name.localeCompare(b.name));
+        // Group voices by language
+        function groupVoicesByLanguage(voices) {
+            const grouped = {};
+            voices.forEach((voice, index) => {
+                const langCode = voice.lang.split('-')[0];
+                if (!grouped[langCode]) {
+                    grouped[langCode] = [];
+                }
+                grouped[langCode].push({ voice, index });
+            });
+            return grouped;
+        }
 
-        let hasResults = false;
-
-        voices.forEach((voice) => {
-            const nameLower = voice.name.toLowerCase();
-            let isMatch = true;
-
-            // --- Gender Filtering Logic ---
-            if (selectedGender === 'male') {
-                isMatch = maleKeywords.some(keyword => nameLower.includes(keyword));
-            } else if (selectedGender === 'female') {
-                isMatch = femaleKeywords.some(keyword => nameLower.includes(keyword));
+        // Initialize speech synthesis
+        function initSpeech() {
+            if ('speechSynthesis' in window) {
+                synth = window.speechSynthesis;
+                loadVoices();
+            } else {
+                status.textContent = 'Text-to-speech not supported in this browser.';
             }
-            // ------------------------------
+        }
 
-            if (isMatch) {
+        // Load voices
+        function loadVoices() {
+            if (!synth) return;
+            
+            voices = synth.getVoices();
+            
+            if (voices.length === 0) {
+                setTimeout(loadVoices, 100);
+                return;
+            }
+            
+            voices.sort((a, b) => a.name.localeCompare(b.name));
+            
+            populateVoiceSelect();
+        }
+
+        // Populate voice select with grouping and recommendations
+        function populateVoiceSelect(recommendedLang = null) {
+            voiceSelect.innerHTML = '';
+            
+            if (voices.length === 0) {
                 const option = document.createElement('option');
-                option.textContent = `${voice.name} (${voice.lang})`;
-                option.setAttribute('data-lang', voice.lang);
-                option.setAttribute('data-name', voice.name);
+                option.textContent = 'No voices available';
                 voiceSelect.appendChild(option);
-                hasResults = true;
-            }
-        });
-
-        if (!hasResults) {
-            const option = document.createElement('option');
-            option.textContent = "-- No voices found for this filter --";
-            voiceSelect.appendChild(option);
-        }
-    }
-
-    populateVoices();
-    if (speechSynthesis.onvoiceschanged !== undefined) {
-        speechSynthesis.onvoiceschanged = populateVoices;
-    }
-
-    // Re-populate list when gender filter changes
-    genderFilter.addEventListener('change', populateVoices);
-
-    function speak() {
-        if (synth.speaking) {
-            console.error('speechSynthesis.speaking');
-            return;
-        }
-
-        if (textInput.value !== '') {
-            const speakText = new SpeechSynthesisUtterance(textInput.value);
-            
-            const selectedOption = voiceSelect.selectedOptions[0];
-            
-            // Safety check if list is empty
-            if(!selectedOption || selectedOption.value.includes("-- No voices")) {
-                alert("Please select a valid voice first.");
                 return;
             }
 
-            const voiceName = selectedOption.getAttribute('data-name');
-            const selectedVoice = voices.find(voice => voice.name === voiceName);
-            
-            // Set voice and language
-            speakText.voice = selectedVoice;
-            speakText.lang = selectedVoice.lang; 
+            const filterPremiumOnly = showPremiumOnly.checked;
+            const shouldAutoSelect = autoSelectPremium.checked;
 
-            speakText.volume = volumeInput.value;
-            speakText.rate = rateInput.value;
-            speakText.pitch = pitchInput.value;
+            const grouped = groupVoicesByLanguage(voices);
+            const langNames = {
+                'en': 'English', 'es': 'Spanish', 'fr': 'French', 'de': 'German',
+                'it': 'Italian', 'pt': 'Portuguese', 'ru': 'Russian', 'zh': 'Chinese',
+                'ja': 'Japanese', 'ko': 'Korean', 'ar': 'Arabic', 'he': 'Hebrew',
+                'hi': 'Hindi', 'th': 'Thai', 'nl': 'Dutch', 'pl': 'Polish',
+                'tr': 'Turkish', 'sv': 'Swedish', 'da': 'Danish', 'no': 'Norwegian',
+                'fi': 'Finnish'
+            };
 
-            speakText.onend = e => { console.log('Done speaking...'); };
-            speakText.onerror = e => { console.error('Something went wrong'); };
+            let firstPremiumIndex = null;
+            let firstRecommendedPremiumIndex = null;
 
-            synth.speak(speakText);
+            // Helper function to add voice option
+            function addVoiceOption(voice, index, container) {
+                if (filterPremiumOnly && !isPremiumVoice(voice)) {
+                    return false;
+                }
+                
+                const option = document.createElement('option');
+                option.value = index;
+                const isPremium = isPremiumVoice(voice);
+                option.textContent = `${voice.name} (${voice.lang})${isPremium ? ' 🌟' : ''}`;
+                
+                if (isPremium) {
+                    option.style.fontWeight = 'bold';
+                    if (firstPremiumIndex === null) {
+                        firstPremiumIndex = index;
+                    }
+                }
+                
+                container.appendChild(option);
+                return true;
+            }
+
+            if (recommendedLang && grouped[recommendedLang]) {
+                const optgroup = document.createElement('optgroup');
+                optgroup.label = `✨ Recommended (${langNames[recommendedLang] || recommendedLang.toUpperCase()})`;
+                
+                let hasVoices = false;
+                grouped[recommendedLang].forEach(({ voice, index }) => {
+                    if (addVoiceOption(voice, index, optgroup)) {
+                        hasVoices = true;
+                        if (isPremiumVoice(voice) && firstRecommendedPremiumIndex === null) {
+                            firstRecommendedPremiumIndex = index;
+                        }
+                    }
+                });
+                
+                if (hasVoices) {
+                    voiceSelect.appendChild(optgroup);
+                }
+            }
+
+            const sortedLangs = Object.keys(grouped).sort((a, b) => {
+                const nameA = langNames[a] || a;
+                const nameB = langNames[b] || b;
+                return nameA.localeCompare(nameB);
+            });
+
+            sortedLangs.forEach(langCode => {
+                if (recommendedLang && langCode === recommendedLang) return;
+                
+                const optgroup = document.createElement('optgroup');
+                optgroup.label = langNames[langCode] || langCode.toUpperCase();
+                
+                let hasVoices = false;
+                grouped[langCode].forEach(({ voice, index }) => {
+                    if (addVoiceOption(voice, index, optgroup)) {
+                        hasVoices = true;
+                    }
+                });
+                
+                if (hasVoices) {
+                    voiceSelect.appendChild(optgroup);
+                }
+            });
+
+            // Auto-select premium voice if enabled
+            if (shouldAutoSelect) {
+                if (firstRecommendedPremiumIndex !== null) {
+                    voiceSelect.value = firstRecommendedPremiumIndex;
+                } else if (firstPremiumIndex !== null) {
+                    voiceSelect.value = firstPremiumIndex;
+                } else if (recommendedLang && grouped[recommendedLang] && grouped[recommendedLang].length > 0) {
+                    voiceSelect.value = grouped[recommendedLang][0].index;
+                }
+            } else if (recommendedLang && grouped[recommendedLang] && grouped[recommendedLang].length > 0) {
+                voiceSelect.value = grouped[recommendedLang][0].index;
+            }
         }
-    }
 
-    speakBtn.addEventListener('click', e => {
-        e.preventDefault();
-        speak();
-    });
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initSpeech);
+        } else {
+            initSpeech();
+        }
+        
+        if (window.speechSynthesis) {
+            window.speechSynthesis.onvoiceschanged = loadVoices;
+        }
 
-    stopBtn.addEventListener('click', e => {
-        e.preventDefault();
-        synth.cancel();
-    });
+        speedControl.addEventListener('input', (e) => {
+            speedValue.textContent = parseFloat(e.target.value).toFixed(1) + 'x';
+        });
 
-    rateInput.addEventListener('change', e => rateVal.textContent = rateInput.value);
-    pitchInput.addEventListener('change', e => pitchVal.textContent = pitchInput.value);
-    volumeInput.addEventListener('change', e => volumeVal.textContent = volumeInput.value);
-</script>
+        // Voice filter event listeners
+        showPremiumOnly.addEventListener('change', () => {
+            populateVoiceSelect(detectedLanguage);
+        });
 
+        autoSelectPremium.addEventListener('change', () => {
+            populateVoiceSelect(detectedLanguage);
+        });
+
+        uploadArea.addEventListener('click', () => fileInput.click());
+
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('drag-over');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('drag-over');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('drag-over');
+            const file = e.dataTransfer.files[0];
+            if (file) {
+                processFile(file);
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                processFile(file);
+            }
+        });
+
+        // Paste button handler
+        pasteBtn.addEventListener('click', () => {
+            const text = pasteTextarea.value.trim();
+            if (text) {
+                processPastedText(text);
+            } else {
+                status.textContent = 'Please paste some text first.';
+            }
+        });
+
+        // Process pasted text
+        function processPastedText(text) {
+            status.textContent = 'Loading pasted text...';
+            
+            pdfText = text;
+            
+            displayText();
+            
+            // Clear textarea after loading
+            pasteTextarea.value = '';
+        }
+
+        async function processFile(file) {
+            const fileType = file.name.split('.').pop().toLowerCase();
+            
+            if (fileType === 'pdf') {
+                await processPDF(file);
+            } else if (fileType === 'txt') {
+                await processTextFile(file);
+            } else {
+                status.textContent = 'Unsupported file type. Please upload PDF or TXT files.';
+            }
+        }
+
+        async function processTextFile(file) {
+            status.textContent = 'Loading text file...';
+            
+            try {
+                const text = await file.text();
+                pdfText = text.trim();
+                
+                if (!pdfText) {
+                    status.textContent = 'The text file is empty.';
+                    return;
+                }
+                
+                displayText();
+            } catch (error) {
+                status.textContent = 'Error loading text file. Please try another file.';
+                console.error(error);
+            }
+        }
+
+        async function processPDF(file) {
+            status.textContent = 'Loading PDF...';
+            
+            try {
+                const arrayBuffer = await file.arrayBuffer();
+                const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
+                let text = '';
+
+                for (let i = 1; i <= pdf.numPages; i++) {
+                    const page = await pdf.getPage(i);
+                    const content = await page.getTextContent();
+                    const pageText = content.items.map(item => item.str).join(' ');
+                    text += pageText + ' ';
+                }
+
+                pdfText = text.trim();
+                
+                if (!pdfText) {
+                    status.textContent = 'The PDF appears to be empty or contains no readable text.';
+                    return;
+                }
+                
+                displayText();
+            } catch (error) {
+                status.textContent = 'Error loading PDF. Please try another file.';
+                console.error(error);
+            }
+        }
+
+        function displayText() {
+            detectedLanguage = detectLanguage(pdfText);
+            
+            let sentenceRegex;
+            
+            if (detectedLanguage === 'zh' || detectedLanguage === 'ja') {
+                sentenceRegex = /[^.!?。！？]+[.!?。！？]+/g;
+            } else if (detectedLanguage === 'ar' || detectedLanguage === 'he') {
+                sentenceRegex = /[^.!?]+[.!?]+/g;
+            } else if (detectedLanguage === 'th') {
+                sentenceRegex = /[^.!?]+[.!?]+/g;
+            } else {
+                sentenceRegex = /[^.!?]+[.!?]+/g;
+            }
+            
+            sentences = pdfText.match(sentenceRegex);
+            
+            if (!sentences || sentences.length === 0) {
+                sentences = pdfText.split(/\n+/).filter(s => s.trim());
+                if (sentences.length === 0) {
+                    sentences = [pdfText];
+                }
+            }
+            
+            textDisplay.innerHTML = '';
+            sentences.forEach((sentence, index) => {
+                const span = document.createElement('span');
+                span.className = 'sentence';
+                span.textContent = sentence + ' ';
+                span.dataset.index = index;
+                span.addEventListener('click', () => {
+                    startFromSentence(index);
+                });
+                textDisplay.appendChild(span);
+            });
+            
+            populateVoiceSelect(detectedLanguage);
+            
+            textDisplay.classList.remove('hidden');
+            controls.classList.remove('hidden');
+            
+            const langNames = {
+                'en': 'English', 'es': 'Spanish', 'fr': 'French', 'de': 'German',
+                'zh': 'Chinese', 'ja': 'Japanese', 'ko': 'Korean', 'ar': 'Arabic',
+                'he': 'Hebrew', 'ru': 'Russian', 'hi': 'Hindi', 'th': 'Thai'
+            };
+            const detectedLangName = langNames[detectedLanguage] || detectedLanguage.toUpperCase();
+            status.textContent = `Detected language: ${detectedLangName}. Premium voices (🌟) recommended for best quality.`;
+        }
+
+        function startFromSentence(index) {
+            if (!synth) return;
+            
+            synth.cancel();
+            
+            document.querySelectorAll('.sentence.highlight').forEach(s => {
+                s.classList.remove('highlight');
+            });
+            
+            currentSentenceIndex = index;
+            isPlaying = true;
+            playBtn.disabled = true;
+            stopBtn.disabled = false;
+            status.textContent = 'Playing...';
+            
+            speakSentence(currentSentenceIndex);
+        }
+
+        function startReading() {
+            if (!synth || currentSentenceIndex >= sentences.length) return;
+            
+            isPlaying = true;
+            playBtn.disabled = true;
+            stopBtn.disabled = false;
+            status.textContent = 'Playing...';
+            
+            speakSentence(currentSentenceIndex);
+        }
+
+        function speakSentence(index) {
+            if (!isPlaying || index >= sentences.length) {
+                if (index >= sentences.length) {
+                    stopReading();
+                    status.textContent = 'Finished playing.';
+                }
+                return;
+            }
+            
+            document.querySelectorAll('.sentence.highlight').forEach(s => {
+                s.classList.remove('highlight');
+            });
+            
+            const sentenceElements = document.querySelectorAll('.sentence');
+            if (sentenceElements[index]) {
+                sentenceElements[index].classList.add('highlight');
+                sentenceElements[index].scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+            
+            const utterance = new SpeechSynthesisUtterance(sentences[index]);
+            
+            const selectedVoice = voices[parseInt(voiceSelect.value)];
+            if (selectedVoice) {
+                utterance.voice = selectedVoice;
+                utterance.lang = selectedVoice.lang;
+            }
+            
+            utterance.rate = parseFloat(speedControl.value);
+            utterance.pitch = 1;
+            utterance.volume = 1;
+            
+            utterance.onend = () => {
+                currentSentenceIndex++;
+                speakSentence(currentSentenceIndex);
+            };
+            
+            utterance.onerror = (event) => {
+                if (event.error === 'interrupted' || event.error === 'cancelled') {
+                    return;
+                }
+                console.error('Speech error:', event);
+            };
+            
+            synth.speak(utterance);
+        }
+
+        function stopReading() {
+            if (!synth) return;
+            
+            synth.cancel();
+            isPlaying = false;
+            currentSentenceIndex = 0;
+            playBtn.disabled = false;
+            stopBtn.disabled = true;
+            
+            document.querySelectorAll('.sentence.highlight').forEach(s => {
+                s.classList.remove('highlight');
+            });
+            
+            status.textContent = 'Stopped';
+        }
+
+        playBtn.addEventListener('click', () => {
+            if (!pdfText || !synth) return;
+            startReading();
+        });
+
+        stopBtn.addEventListener('click', () => {
+            stopReading();
+        });
+    </script>
 </body>
 </html>
