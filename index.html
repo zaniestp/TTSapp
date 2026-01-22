@@ -452,7 +452,9 @@
         }
 
         // Populate voice select with grouping and recommendations
-        function populateVoiceSelect(recommendedLang = null) {
+        function populateVoiceSelect(recommendedLang = null, preserveSelection = false) {
+            const currentSelection = preserveSelection ? voiceSelect.value : null;
+            
             voiceSelect.innerHTML = '';
             
             if (voices.length === 0) {
@@ -463,7 +465,7 @@
             }
 
             const filterPremiumOnly = showPremiumOnly.checked;
-            const shouldAutoSelect = autoSelectPremium.checked;
+            const shouldAutoSelect = autoSelectPremium.checked && !preserveSelection;
 
             const grouped = groupVoicesByLanguage(voices);
             const langNames = {
@@ -543,8 +545,10 @@
                 }
             });
 
-            // Auto-select premium voice if enabled
-            if (shouldAutoSelect) {
+            // Restore previous selection or auto-select
+            if (preserveSelection && currentSelection && voiceSelect.querySelector(`option[value="${currentSelection}"]`)) {
+                voiceSelect.value = currentSelection;
+            } else if (shouldAutoSelect) {
                 if (firstRecommendedPremiumIndex !== null) {
                     voiceSelect.value = firstRecommendedPremiumIndex;
                 } else if (firstPremiumIndex !== null) {
@@ -573,11 +577,48 @@
 
         // Voice filter event listeners
         showPremiumOnly.addEventListener('change', () => {
+            if (isPlaying) {
+                // Don't change voices while playing
+                showPremiumOnly.checked = !showPremiumOnly.checked;
+                status.textContent = 'Stop playback before changing voice filters';
+                setTimeout(() => {
+                    if (!isPlaying) {
+                        status.textContent = 'Ready to play';
+                    }
+                }, 2000);
+                return;
+            }
+            const currentSelection = voiceSelect.value;
             populateVoiceSelect(detectedLanguage);
+            // Try to restore selection if it still exists
+            if (currentSelection && voiceSelect.querySelector(`option[value="${currentSelection}"]`)) {
+                voiceSelect.value = currentSelection;
+            }
         });
 
         autoSelectPremium.addEventListener('change', () => {
-            populateVoiceSelect(detectedLanguage);
+            if (isPlaying) {
+                // Don't change voices while playing
+                autoSelectPremium.checked = !autoSelectPremium.checked;
+                status.textContent = 'Stop playback before changing voice filters';
+                setTimeout(() => {
+                    if (!isPlaying) {
+                        status.textContent = 'Ready to play';
+                    }
+                }, 2000);
+                return;
+            }
+            if (!autoSelectPremium.checked) {
+                // If unchecking auto-select, keep current selection
+                const currentSelection = voiceSelect.value;
+                populateVoiceSelect(detectedLanguage);
+                if (currentSelection && voiceSelect.querySelector(`option[value="${currentSelection}"]`)) {
+                    voiceSelect.value = currentSelection;
+                }
+            } else {
+                // If checking auto-select, let it auto-select
+                populateVoiceSelect(detectedLanguage);
+            }
         });
 
         uploadArea.addEventListener('click', () => fileInput.click());
@@ -766,7 +807,15 @@
         }
 
         function startReading() {
-            if (!synth || currentSentenceIndex >= sentences.length) return;
+            if (!synth || !sentences || sentences.length === 0) {
+                status.textContent = 'No text to read';
+                return;
+            }
+            
+            // Reset to beginning only if not already playing
+            if (!isPlaying) {
+                currentSentenceIndex = 0;
+            }
             
             isPlaying = true;
             playBtn.disabled = true;
@@ -785,6 +834,8 @@
                 return;
             }
             
+            console.log('Speaking sentence', index + 1, 'of', sentences.length, ':', sentences[index].substring(0, 50));
+            
             document.querySelectorAll('.sentence.highlight').forEach(s => {
                 s.classList.remove('highlight');
             });
@@ -797,26 +848,61 @@
             
             const utterance = new SpeechSynthesisUtterance(sentences[index]);
             
-            const selectedVoice = voices[parseInt(voiceSelect.value)];
+            const selectedVoiceIndex = parseInt(voiceSelect.value);
+            const selectedVoice = voices[selectedVoiceIndex];
+            
             if (selectedVoice) {
                 utterance.voice = selectedVoice;
                 utterance.lang = selectedVoice.lang;
+                console.log('Using voice:', selectedVoice.name, '(index:', selectedVoiceIndex, ') Lang:', selectedVoice.lang);
+            } else {
+                console.error('No voice found at index:', selectedVoiceIndex);
             }
             
             utterance.rate = parseFloat(speedControl.value);
             utterance.pitch = 1;
             utterance.volume = 1;
             
+            utterance.onstart = () => {
+                console.log('Started speaking sentence', index + 1);
+                // Verify voice hasn't changed
+                const currentVoiceIndex = parseInt(voiceSelect.value);
+                if (currentVoiceIndex !== selectedVoiceIndex) {
+                    console.warn('Voice changed during playback! Was:', selectedVoiceIndex, 'Now:', currentVoiceIndex);
+                }
+            };
+            
             utterance.onend = () => {
-                currentSentenceIndex++;
-                speakSentence(currentSentenceIndex);
+                console.log('Finished speaking sentence', index + 1);
+                if (isPlaying) {
+                    currentSentenceIndex++;
+                    // Small delay to ensure smooth transition
+                    setTimeout(() => {
+                        if (isPlaying) {
+                            speakSentence(currentSentenceIndex);
+                        }
+                    }, 50);
+                }
             };
             
             utterance.onerror = (event) => {
+                console.error('Speech error at sentence', index + 1, ':', event.error);
                 if (event.error === 'interrupted' || event.error === 'cancelled') {
                     return;
                 }
-                console.error('Speech error:', event);
+                // Try to continue to next sentence even on error
+                if (isPlaying) {
+                    currentSentenceIndex++;
+                    if (currentSentenceIndex < sentences.length) {
+                        setTimeout(() => {
+                            if (isPlaying) {
+                                speakSentence(currentSentenceIndex);
+                            }
+                        }, 100);
+                    } else {
+                        stopReading();
+                    }
+                }
             };
             
             synth.speak(utterance);
